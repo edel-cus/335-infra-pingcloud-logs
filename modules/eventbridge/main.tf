@@ -18,6 +18,13 @@ resource "aws_cloudwatch_event_rule" "scheduler" {
 resource "aws_cloudwatch_event_target" "lambda_target" {
   rule = aws_cloudwatch_event_rule.scheduler.name
   arn  = var.lambda_function_arn
+
+  input = jsonencode({
+    mensaje    = "Hola desde EventBridge"
+    timestamp  = "${timestamp()}"
+    otro_dato  = 123
+  })
+
 }
 
 resource "aws_lambda_permission" "allow_eventbridge" {
