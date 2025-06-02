@@ -8,12 +8,22 @@ variable "s3_bucket_name" {
   type = string
 }
 
+
+data "aws_secretsmanager_secret" "secret_a" {
+  name = "secret-A"
+}
+
+data "aws_secretsmanager_secret" "secret_b" {
+  name = "secret-B"
+}
+
 resource "aws_iam_role" "lambda" {
   name = var.lambda_role_name
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
+      Action = "sts:AssumeRole"
       Effect = "Allow"
       Principal = {
         Service = "lambda.amazonaws.com"
@@ -39,9 +49,15 @@ resource "aws_iam_role_policy" "lambda_policy" {
         Action = [
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
-          "logs:PutLogEvents"
+          "logs:PutLogEvents",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
         ]
-        Resource = "arn:aws:logs:*:*:*"
+        Resource = [
+          data.aws_secretsmanager_secret.secret_a.arn,
+          data.aws_secretsmanager_secret.secret_b.arn,
+          "arn:aws:logs:*:*:*"
+        ]
       },
       {
         Effect   = "Allow"
@@ -50,6 +66,11 @@ resource "aws_iam_role_policy" "lambda_policy" {
       }
     ]
   })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_secrets_attach" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = aws_iam_policy.lambda_secrets_policy.arn
 }
 
 data "archive_file" "lambda_zip" {
